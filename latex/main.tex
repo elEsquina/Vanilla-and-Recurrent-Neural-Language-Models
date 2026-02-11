@@ -1,0 +1,78 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{Basic and Recurrent Neural Language Models: Implementation and Comparison}
+\date{February 2026}
+
+\begin{document}
+\maketitle
+
+\section{Biggest Takeaways}
+Neural language models learn to predict the next word in a text. They use word embeddings, which are vectors learned from data. Compared with classic $n$-gram models, they do not rely on large count tables. Instead, they learn dense representations and can generalize better to similar contexts.
+
+This report compares two neural approaches. The first one uses a fixed context window. It looks at the last few tokens only, so it is simple and fast, but it cannot use information outside this window. The second one is recurrent (RNN). It keeps a hidden state that is updated at each step. This can help to use longer context, but training is slower because it processes tokens in order.
+
+\section{Models}
+\subsection{Basic Neural Language Model (Fixed Context)}
+Given a context of $C$ previous tokens $(w_{t-C}, \dots, w_{t-1})$, the model looks up the embeddings of these tokens and concatenates them. Then it applies one hidden layer with a tanh activation. Finally, it uses a softmax layer to predict a probability distribution over the vocabulary for the next token.
+
+\subsection{RNN Neural Language Model}
+The recurrent model processes tokens sequentially. At each time step $t$, it updates a hidden state $h_t$ from the current embedding and the previous state, then predicts the next token via a softmax. This experiment uses a simple tanh RNN with truncated backpropagation through time on fixed-length sequences.
+
+\section{Experimental Setup}
+\subsection{Datasets}
+Two local datasets were used. The first dataset is News (HuffPost headlines and short descriptions) from \texttt{data/News\_Category\_Dataset\_v2.json}. The second dataset is Amazon Reviews (review title and review body) from \texttt{data/AmazonReviews/train.csv}.
+
+\subsection{Preprocessing}
+Text was lowercased and tokenized at word and punctuation level. Documents were concatenated into a single stream with \texttt{<bos>} and \texttt{<eos>} markers. For each dataset, a capped word vocabulary of size 1200 was built (including \texttt{<pad>}, \texttt{<unk>}, \texttt{<bos>}, and \texttt{<eos>}), and tokens with frequency smaller than 2 were removed. Out-of-vocabulary tokens map to \texttt{<unk>}.
+
+\subsection{Training and Evaluation}
+Both models were implemented in PyTorch (\texttt{torch.nn.Module}) and trained with Adam and gradient clipping. The main hyperparameters are: embedding dimension 32, hidden dimension 64, learning rate 0.003, context size 4 for the Basic model, sequence length 20 for the RNN model, and 3 training epochs.
+
+Perplexity (PPL) is reported on held-out validation samples as $\exp(\text{cross-entropy})$.
+
+\section{Results}
+\subsection{Validation Perplexity}
+\IfFileExists{results_table.tex}{\input{results_table.tex}}{Run \texttt{Testing.ipynb} to generate \texttt{latex/results\_table.tex}.}
+
+\subsection{Figures}
+\IfFileExists{figs/news_perplexity_curves.png}{
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{figs/news_perplexity_curves.png}
+\caption{Perplexity curves on the News dataset.}
+\end{figure}
+}{}
+
+\IfFileExists{figs/amazon_perplexity_curves.png}{
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{figs/amazon_perplexity_curves.png}
+\caption{Perplexity curves on the Amazon dataset.}
+\end{figure}
+}{}
+
+\IfFileExists{figs/val_perplexity_comparison.png}{
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{figs/val_perplexity_comparison.png}
+\caption{Final validation perplexity comparison across datasets.}
+\end{figure}
+}{}
+
+\IfFileExists{figs/training_time_comparison.png}{
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{figs/training_time_comparison.png}
+\caption{Training time comparison.}
+\end{figure}
+}{}
+
+\section{Discussion}
+The results highlight a practical tradeoff between the two formulations. The fixed-window Basic NLM is easy to optimize and can be competitive when the next token is mostly determined by a short local context. The recurrent model removes the hard context cutoff by carrying a hidden state forward, which can help when longer dependencies matter, but training is sequential and often benefits from careful tuning (hidden size, sequence length, number of epochs).
+
+\end{document}
